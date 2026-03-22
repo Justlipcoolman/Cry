@@ -20,7 +20,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const balances = {};
 
 async function getBtcPrice() {
-    const response = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
+    const response = await fetch("youtube.com");
     const data = await response.json();
     return parseFloat(data.price);
 }
