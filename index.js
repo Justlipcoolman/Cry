@@ -1,43 +1,68 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 
-// 1. Render's Required Web Server
+// 1. Render Web Server
 const app = express();
-app.get('/', (req, res) => res.send('Bot status: Waiting for Discord door to open...'));
-app.listen(process.env.PORT || 10000);
+app.get('/', (req, res) => res.send('Bot is probing headers...'));
+app.listen(process.env.PORT || 10000, '0.0.0.0');
 
 const TOKEN = process.env.TOKEN;
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// 2. THE RATE LIMIT WATCHER
-// This is the part that captures the Retry-After from Discord's system.
-client.rest.on('rateLimit', (info) => {
-    console.warn(`!!! [429 RATE LIMIT DETECTED] !!!`);
-    console.warn(`-> Discord is blocking us for: ${info.retryAfter / 1000} seconds`);
-    console.warn(`-> Reason: Too many requests from Render's shared IP.`);
-    console.warn(`-> Bucket: ${info.hash}`);
-});
-
-// 3. THE LOGIN LOGIC
-async function login() {
-    console.log("🚀 [STEP 1] Starting Login Process...");
+// 2. THE PROBE (Directly looks for Retry-After)
+async function probeDiscord() {
+    console.log("🔍 [PROBE] Manually checking Discord API headers...");
     try {
-        await client.login(TOKEN);
-    } catch (err) {
-        console.error("❌ [STEP 2] LOGIN FAILED:");
+        const response = await fetch("https://discord.com/api/v10/users/@me", {
+            headers: { Authorization: `Bot ${TOKEN}` }
+        });
+
+        console.log(`📡 [PROBE] Status: ${response.status} ${response.statusText}`);
         
-        // This checks if Discord sent a specific 429 error during the login attempt
-        if (err.status === 429) {
-            const retryAfter = err.rawError?.retry_after || "Unknown";
-            console.error(`🔴 RETRY-AFTER HEADER: Discord says wait ${retryAfter} seconds.`);
+        // Capture the headers you want
+        const retryAfter = response.headers.get("retry-after");
+        const xLimit = response.headers.get("x-ratelimit-remaining");
+        const cloudflare = response.headers.get("cf-ray");
+
+        if (retryAfter) {
+            console.log(`🚨 [RETRY-AFTER FOUND]: ${retryAfter} seconds`);
+            console.log(`👉 Render must wait ${retryAfter} seconds before Discord allows a login.`);
+        } else if (response.status === 429) {
+            console.log("🚨 [429 ERROR]: Rate limited, but Discord didn't send a retry-after (Cloudflare Block).");
         } else {
-            console.error(`Error Message: ${err.message}`);
+            console.log("✅ No rate limit detected by the probe.");
         }
+
+        if (xLimit) console.log(`📊 API Capacity Remaining: ${xLimit}`);
+        if (cloudflare) console.log(`☁️ Cloudflare Trace ID: ${cloudflare}`);
+
+    } catch (error) {
+        console.error("❌ [PROBE] Network connection failed. Discord might be dropping Render's requests entirely.");
     }
 }
 
+// 3. THE BOT
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
 client.once('ready', () => {
-    console.log(`✅ [SUCCESS] Bot is online as ${client.user.tag}`);
+    console.log(`✅ [DISCORD] Success! Online as ${client.user.tag}`);
 });
 
-login();
+async function start() {
+    // Run the probe first
+    await probeDiscord();
+
+    // Try to login
+    console.log("🚀 [DISCORD] Starting client.login()...");
+    client.login(TOKEN).catch(err => {
+        console.error("❌ [DISCORD] Login Error:", err.message);
+    });
+}
+
+// Watchdog to see if it hangs
+setTimeout(() => {
+    if (!client.user) {
+        console.log("⏳ [WATCHDOG] The login has been hanging for 20 seconds. If the probe showed 429, this is normal.");
+    }
+}, 20000);
+
+start();
