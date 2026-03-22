@@ -1,49 +1,63 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes } = require('discord.js');
 const express = require('express');
-const https = require('https');
 
-// 1. WEB SERVER
+// 1. WEB SERVER (Required for Render)
 const app = express();
-app.get('/', (req, res) => res.send('Bot is online!'));
+app.get('/', (req, res) => res.send('Bot is tracking rate limits...'));
 app.listen(process.env.PORT || 10000, '0.0.0.0');
 
 const TOKEN = process.env.TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
 
-// 2. EMERGENCY DIAGNOSTIC TEST
-console.log("🔍 DIAGNOSTIC: Checking connection to Discord API...");
-
-const req = https.get('https://discord.com/api/v10/gateway', (res) => {
-    console.log(`📡 NETWORK TEST: Discord responded with status: ${res.statusCode}`);
-    if (res.statusCode === 429) {
-        console.error("❌ ERROR: Discord is rate-limiting this Render IP. The bot cannot connect right now.");
-    }
-});
-
-req.on('error', (e) => {
-    console.error(`❌ NETWORK TEST FAILED: ${e.message}`);
-});
-
-// 3. THE BOT
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
+// 2. THE RATE LIMIT LOGGER (This is what you asked for)
+// This event fires whenever Discord tells the bot to slow down.
+client.rest.on('rateLimit', (info) => {
+    const waitSeconds = info.retryAfter / 1000;
+    console.warn(`🛑 [429 RATE LIMIT]`);
+    console.warn(`   - Time to wait: ${waitSeconds} seconds`);
+    console.warn(`   - Limit: ${info.limit}`);
+    console.warn(`   - Global Limit: ${info.global ? 'YES' : 'No'}`);
+    console.warn(`   - Route: ${info.route}`);
+});
+
+// 3. LOGIN LOGIC
+async function startBot() {
+    try {
+        console.log("🚀 Attempting login...");
+        await client.login(TOKEN);
+    } catch (err) {
+        console.error("❌ LOGIN ERROR:");
+        
+        // If the error object itself contains retry info
+        if (err.status === 429) {
+            const retryAfter = err.rawError?.retry_after || "Unknown";
+            console.error(`🔴 DISCORD IS BUSY: Retry-After = ${retryAfter} seconds`);
+        } else {
+            console.error(err.message);
+        }
+
+        // Automatic retry after a 429 (Wait 1 minute and try again)
+        console.log("⏳ Waiting 60 seconds before next manual login attempt...");
+        setTimeout(startBot, 60000);
+    }
+}
+
+// 4. BOT EVENTS
 client.once('ready', () => {
     console.log(`✅ SUCCESS! Bot is online as ${client.user.tag}`);
 });
 
-console.log("🚀 Attempting to login...");
-
-client.login(TOKEN).catch(err => {
-    console.error("❌ LOGIN FAILED!");
-    console.error("Error Name:", err.name);
-    console.error("Error Message:", err.message);
-    if (err.message.includes("Privileged instruction")) {
-        console.error("👉 FIX: You forgot to turn on INTENTS in the Discord Developer Portal.");
+// 5. STORAGE & COMMANDS
+const db = {};
+client.on('interactionCreate', async (i) => {
+    if (!i.isChatInputCommand()) return;
+    if (i.commandName === 'daily') {
+        db[i.user.id] = (db[i.user.id] || 0) + 1000;
+        return i.reply(`💰 Added 1,000! Balance: ${db[i.user.id]}`);
     }
+    // (Other commands here...)
 });
 
-// 4. TIMEOUT CATCHER
-setTimeout(() => {
-    if (!client.user) {
-        console.log("⏰ STILL HANGING: The bot has been trying to login for 20 seconds and failed. This is usually an IP block or a wrong Token.");
-    }
-}, 20000);
+startBot();
