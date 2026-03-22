@@ -1,7 +1,7 @@
 {
-  "name": "crypto-bet-bot",
+  "name": "cry-bot",
   "version": "1.0.0",
-  "description": "A crypto betting bot",
+  "description": "A cry Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
