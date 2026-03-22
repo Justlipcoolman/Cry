@@ -2,7 +2,6 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 
 // 1. Render Web Server
-const express = require('express');
 const app = express();
 
 app.get('/', (req, res) => {
